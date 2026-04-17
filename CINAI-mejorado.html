@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CINAI — Inteligencia Cinematografica</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,700;1,300;1,500&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:        #05070F;
+  --bg2:       #080C18;
+  --bg3:       #0C1220;
+  --line:      #141E35;
+  --line2:     #1C2A45;
+  --blue:      #2563EB;
+  --blue-l:    #3B82F6;
+  --blue-gl:   #60A5FA;
+  --gold:      #C9A84C;
+  --gold-l:    #E0BB6A;
+  --gold-d:    #A07830;
+  --teal:      #0D9488;
+  --teal-l:    #14B8A6;
+  --text:      #D4DCF0;
+  --text2:     #8494B8;
+  --text3:     #3A4A6A;
+  --red:       #E05555;
+  --purple:    #8B5CF6;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--blue)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes glow{0%,100%{text-shadow:0 0 20px rgba(37,99,235,.4)}50%{text-shadow:0 0 50px rgba(37,99,235,.8),0 0 80px rgba(201,168,76,.3)}}
+@keyframes borderPulse{0%,100%{border-color:var(--line2)}50%{border-color:var(--blue)}}
+
+.fade-up{animation:fadeUp .4s ease forwards}
+.screen{display:none}.screen.active{display:block}
+
+/* ── SCANLINE overlay ── */
+#scanline{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+#scanline::after{content:'';position:absolute;left:0;right:0;height:2px;background:linear-gradient(transparent,rgba(37,99,235,.06),transparent);animation:scanline 8s linear infinite}
+#grid-bg{position:fixed;inset:0;pointer-events:none;z-index:1;
+  background-image:linear-gradient(rgba(37,99,235,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.03) 1px,transparent 1px);
+  background-size:40px 40px}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 30%,transparent 40%,rgba(5,7,15,.9) 100%)}
+
+/* ── INICIO ── */
+#screen-inicio{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;position:relative}
+.inicio-wrap{position:relative;z-index:10;text-align:center;max-width:640px;animation:fadeUp .7s ease forwards}
+.inicio-eyebrow{font-size:.65rem;letter-spacing:.5em;color:var(--blue-l);margin-bottom:32px;text-transform:uppercase;opacity:.8}
+.inicio-logo-wrap{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
+.logo-icon{width:56px;height:56px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;box-shadow:0 0 40px rgba(37,99,235,.4),0 0 80px rgba(13,148,136,.2)}
+.inicio-title{font-family:'Cormorant Garamond',serif;font-size:clamp(3rem,8vw,5.5rem);font-weight:700;color:#fff;letter-spacing:.06em;animation:glow 4s ease infinite;line-height:1}
+.inicio-tagline{font-size:.72rem;letter-spacing:.25em;color:var(--gold);text-transform:uppercase;margin-bottom:10px;margin-top:4px}
+.inicio-subtitle{font-size:.9rem;color:var(--text2);line-height:1.9;margin-bottom:36px;font-weight:300}
+.inicio-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:44px}
+.badge{background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);color:var(--blue-gl);padding:4px 14px;border-radius:3px;font-size:.62rem;letter-spacing:.15em}
+.btn-launch{background:linear-gradient(135deg,var(--blue),#1D4ED8);border:none;color:#fff;padding:16px 52px;border-radius:4px;font-size:.8rem;font-weight:500;font-family:'DM Mono',monospace;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 30px rgba(37,99,235,.4),inset 0 1px 0 rgba(255,255,255,.1);transition:all .25s;position:relative;overflow:hidden}
+.btn-launch::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(255,255,255,.06),transparent);pointer-events:none}
+.btn-launch:hover{transform:translateY(-2px);box-shadow:0 8px 40px rgba(37,99,235,.5)}
+.inicio-credit{margin-top:44px;font-size:.62rem;letter-spacing:.15em;color:var(--text3);text-transform:uppercase}
+.inicio-credit span{color:var(--gold-d)}
+.inicio-legal{margin-top:8px;color:var(--text3);font-size:.6rem;letter-spacing:.1em}
+
+/* ── TOPBAR ── */
+.topbar{position:sticky;top:0;z-index:200;background:rgba(5,7,15,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.topbar-left{display:flex;align-items:center;gap:10px}
+.topbar-logo{width:28px;height:28px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+.topbar-brand{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:700;color:#fff;letter-spacing:.1em}
+.topbar-brand span{color:var(--blue-l)}
+.topbar-btn{background:transparent;border:1px solid var(--line2);color:var(--text2);font-size:.65rem;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:.12em;padding:6px 14px;border-radius:3px;transition:all .2s}
+.topbar-btn:hover{border-color:var(--blue);color:var(--blue-l)}
+.topbar-center{text-align:center}
+.topbar-project{font-size:.78rem;color:var(--text);letter-spacing:.08em;font-family:'Cormorant Garamond',serif;font-style:italic}
+.topbar-meta{font-size:.6rem;color:var(--text3);margin-top:2px;letter-spacing:.1em}
+.topbar-new{background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.3);color:var(--blue-l);padding:6px 14px;border-radius:3px;cursor:pointer;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;transition:all .2s}
+.topbar-new:hover{background:rgba(37,99,235,.2)}
+
+/* ── PROGRESS ── */
+#progress-wrap{background:var(--bg2);height:2px}
+#progress-bar{height:2px;background:linear-gradient(90deg,var(--blue),var(--teal));width:0%;transition:width .4s ease;box-shadow:0 0 8px var(--blue)}
+
+/* ── TABS ── */
+.tabs{display:flex;overflow-x:auto;background:var(--bg2);border-bottom:1px solid var(--line);padding:0 20px;gap:0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text3);padding:11px 16px;cursor:pointer;font-size:.62rem;font-family:'DM Mono',monospace;letter-spacing:.12em;white-space:nowrap;transition:all .2s;text-transform:uppercase}
+.tab-btn:hover{color:var(--text2)}
+.tab-btn.active{font-weight:500}
+
+/* ── FORM ── */
+.form-wrap{max-width:680px;margin:0 auto;padding:36px 24px}
+.step-head{display:flex;align-items:center;gap:14px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.step-num{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.step-label{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:500;color:var(--text)}
+.step-hint{font-size:.62rem;color:var(--text3);margin-top:3px;letter-spacing:.08em}
+
+.field{margin-bottom:22px}
+.field label{display:block;color:var(--text2);font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;font-weight:500}
+.field input,.field textarea{width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:4px;color:var(--text);padding:11px 14px;font-size:.8rem;font-family:'DM Mono',monospace;outline:none;transition:all .2s;resize:vertical;line-height:1.65}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field input:focus,.field textarea:focus{background:var(--bg3);border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.field input.has-val,.field textarea.has-val{border-color:var(--line2)}
+
+.form-nav{display:flex;justify-content:space-between;margin-top:36px;gap:12px;padding-top:24px;border-top:1px solid var(--line)}
+.btn-back{background:transparent;border:1px solid var(--line2);color:var(--text2);padding:10px 22px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.12em;transition:all .2s}
+.btn-back:hover{border-color:var(--blue-l);color:var(--blue-l)}
+.btn-next{border:none;color:#fff;padding:10px 32px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:.72rem;font-weight:500;letter-spacing:.15em;text-transform:uppercase;transition:all .2s;box-shadow:0 4px 20px rgba(37,99,235,.3)}
+.btn-next:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(37,99,235,.4)}
+.btn-skip{display:block;text-align:center;margin-top:14px;background:none;border:none;color:var(--text3);font-size:.65rem;cursor:pointer;font-family:'DM Mono',monospace;letter-spacing:.1em;text-decoration:none;padding:6px}
+.btn-skip:hover{color:var(--text2)}
+
+/* ── PROMPTS ── */
+.prompts-wrap{max-width:860px;margin:0 auto;padding:28px 22px 48px}
+.phase-head{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding:16px 20px;border-radius:6px;border:1px solid var(--line)}
+.phase-icon{width:42px;height:42px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.phase-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--text)}
+.phase-sub{font-size:.6rem;color:var(--text3);margin-top:3px;letter-spacing:.1em}
+
+.p-card{background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:18px 20px;cursor:pointer;transition:all .2s;margin-bottom:10px;position:relative;overflow:hidden}
+.p-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;transition:background .2s}
+.p-card:hover{background:var(--bg3);border-color:var(--line2)}
+.p-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.p-badge{display:inline-block;font-size:.55rem;padding:2px 10px;border-radius:2px;letter-spacing:.2em;margin-bottom:7px;text-transform:uppercase;font-weight:500}
+.p-card-title{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:500;color:var(--text);line-height:1.3}
+.p-card-arrow{color:var(--text3);font-size:.8rem;margin-top:6px;transition:color .2s}
+.p-card:hover .p-card-arrow{color:var(--blue-l)}
+.p-preview{color:var(--text3);font-size:.68rem;margin-top:10px;line-height:1.6;font-weight:300}
+
+/* ── PROMPT VIEWER ── */
+.pv-back{background:transparent;border:1px solid var(--line2);color:var(--text2);padding:7px 16px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;margin-bottom:20px;display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+.pv-back:hover{border-color:var(--blue);color:var(--blue-l)}
+.pv-box{background:var(--bg2);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pv-header{padding:20px 24px;border-bottom:1px solid var(--line)}
+.pv-title{font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:500;color:var(--text);margin-top:8px;line-height:1.3}
+.pv-sub{font-size:.6rem;color:var(--text3);margin-top:4px;letter-spacing:.1em}
+.pv-body{padding:22px}
+.pv-text-wrap{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:20px;max-height:440px;overflow-y:auto;margin-bottom:18px}
+.pv-text{color:var(--text2);font-size:.76rem;line-height:2;font-family:'DM Mono',monospace;white-space:pre-wrap;word-break:break-word;font-weight:300}
+.pv-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch}
+.btn-copy{border:none;padding:11px 28px;border-radius:4px;cursor:pointer;font-weight:500;font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;transition:all .2s}
+.pv-tip{flex:1;min-width:180px;background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.12);border-radius:4px;padding:11px 14px;font-size:.65rem;line-height:1.7;color:var(--text3)}
+.pv-nav{display:flex;gap:12px;margin-top:16px}
+.btn-pnav{background:var(--bg2);border:1px solid var(--line);color:var(--text2);padding:8px 18px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.08em;transition:all .2s}
+.btn-pnav:hover{border-color:var(--line2);color:var(--text)}
+.tip-banner{margin-top:20px;padding:12px 16px;background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.12);border-radius:4px;font-size:.7rem;color:var(--gold-d);line-height:1.65}
+.tip-banner a{color:var(--gold);cursor:pointer;text-decoration:underline}
+
+/* ── FOOTER ── */
+.footer{border-top:1px solid var(--line);padding:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;max-width:860px;margin:0 auto}
+.footer-stats{display:flex;gap:28px}
+.footer-stat{text-align:center}
+.footer-n{color:var(--blue-l);font-size:1.1rem;font-family:'Cormorant Garamond',serif;font-weight:500}
+.footer-l{color:var(--text3);font-size:.58rem;letter-spacing:.12em;margin-top:1px}
+.footer-credit{font-size:.6rem;color:var(--text3);letter-spacing:.12em;text-align:right;line-height:1.9}
+.footer-credit span{color:var(--gold-d)}
+
+@media(max-width:600px){
+  #screen-inicio{padding:40px 28px}
+  .inicio-title{font-size:3rem}
+  .footer{justify-content:center}
+  .footer-credit{text-align:center}
+}
+
+/* VALIDATION */
+.field-error{border-color:var(--red)!important;box-shadow:0 0 0 3px rgba(224,85,85,.12)!important}
+.err-msg{font-size:.6rem;color:var(--red);margin-top:5px;letter-spacing:.06em;display:flex;align-items:center;gap:5px}
+.err-msg::before{content:"\26A0";font-size:.65rem}
+/* TOAST */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);background:#064E3B;color:#6EE7B7;padding:11px 24px;border-radius:24px;font-size:.7rem;letter-spacing:.1em;opacity:0;transition:all .3s;z-index:1000;white-space:nowrap;pointer-events:none;border:1px solid rgba(110,231,183,.2);font-family:'DM Mono',monospace}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:#7F1D1D;color:#FCA5A5;border-color:rgba(252,165,165,.2)}
+/* EXPORT BAR */
+.exp-bar{display:flex;gap:10px;flex-wrap:wrap;padding:14px 24px;background:rgba(37,99,235,.04);border-top:1px solid var(--line);max-width:860px;margin:0 auto;align-items:center}
+.exp-label{font-size:.6rem;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;flex:1;display:flex;align-items:center;gap:6px}
+.save-dot{width:6px;height:6px;border-radius:50%;background:var(--teal-l);display:inline-block;animation:sdp 2s ease infinite}
+@keyframes sdp{0%,100%{opacity:1}50%{opacity:.25}}
+.btn-exp{background:transparent;border:1px solid var(--line2);color:var(--text2);padding:8px 16px;border-radius:4px;cursor:pointer;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.1em;transition:all .2s;display:flex;align-items:center;gap:6px}
+.btn-exp:hover{border-color:var(--blue);color:var(--blue-l)}
+.btn-exp-gold{border-color:var(--gold-d);color:var(--gold)}
+.btn-exp-gold:hover{border-color:var(--gold-l);color:var(--gold-l);background:rgba(201,168,76,.06)}
+
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<div id="grid-bg"></div>
+<div id="scanline"></div>
+<div id="vignette"></div>
+
+<!-- ══ INICIO ══════════════════════════════════════════════════ -->
+<div id="screen-inicio" class="screen active">
+  <div class="inicio-wrap">
+    <div class="inicio-eyebrow">Plataforma de Desarrollo Cinematografico</div>
+    <div class="inicio-logo-wrap">
+      <div class="logo-icon">&#127916;</div>
+      <h1 class="inicio-title">CINAI</h1>
+    </div>
+    <p class="inicio-tagline">Inteligencia Artificial para el Cine</p>
+    <p class="inicio-subtitle">
+      Ingresa los datos de tu proyecto y genera autom&aacute;ticamente<br>
+      <strong style="color:#fff">14 prompts profesionales</strong> con IA —<br>
+      desde el concepto hasta la recuperaci&oacute;n de la inversi&oacute;n.
+    </p>
+    <div class="inicio-badges">
+      <span class="badge">Preproduccion</span>
+      <span class="badge">Rodaje</span>
+      <span class="badge">Postproduccion</span>
+      <span class="badge">Viaje del Heroe</span>
+      <span class="badge">Fondos</span>
+      <span class="badge">Mercado &amp; ROI</span>
+    </div>
+    <button class="btn-launch" onclick="irA('form')">Iniciar Proyecto &rarr;</button>
+    <div class="inicio-credit">
+      Desarrollado por <span>Harlinson Olea</span><br>
+      <span style="color:var(--text3)">Cine Comunitario &amp; Cultural &middot; Colombia</span>
+    </div>
+    <p class="inicio-legal" style="margin-top:10px">Gratuito &middot; Sin registro &middot; Tus datos permanecen en tu dispositivo</p>
+  </div>
+</div>
+
+<!-- ══ FORMULARIO ══════════════════════════════════════════════ -->
+<div id="screen-form" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">&#127916;</div>
+      <button class="topbar-btn" onclick="irA('inicio')">&larr; Inicio</button>
+    </div>
+    <div class="topbar-center">
+      <div class="topbar-brand">CI<span>NAI</span></div>
+      <div class="topbar-meta" id="form-pct">0% completado</div>
+    </div>
+    <span style="color:var(--text3);font-size:.62rem;letter-spacing:.1em" id="form-step-lbl"></span>
+  </div>
+  <div id="progress-wrap"><div id="progress-bar"></div></div>
+  <div class="tabs" id="form-tabs"></div>
+  <div id="form-body"></div>
+</div>
+
+<!-- ══ PROMPTS ══════════════════════════════════════════════════ -->
+<div id="screen-prompts" class="screen">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">&#127916;</div>
+      <button class="topbar-btn" onclick="irA('form')">&larr; Editar</button>
+    </div>
+    <div class="topbar-center">
+      <div class="topbar-project" id="p-title">Mi Proyecto</div>
+      <div class="topbar-meta"   id="p-meta"></div>
+    </div>
+    <button class="topbar-btn" onclick="exportData('prompts')" title="Exportar prompts" style="margin-right:4px">&#11015; Exportar</button><button class="topbar-new" onclick="irA('inicio')">+ Nuevo</button>
+  </div>
+  <div class="tabs" id="phase-tabs"></div>
+  <div class="prompts-wrap" id="prompts-body"></div>
+  <div class="footer">
+    <div class="footer-stats">
+      <div class="footer-stat"><div class="footer-n">14</div><div class="footer-l">PROMPTS</div></div>
+      <div class="footer-stat"><div class="footer-n">6</div><div class="footer-l">FASES</div></div>
+      <div class="footer-stat"><div class="footer-n">30</div><div class="footer-l">CAMPOS</div></div>
+    </div>
+    <div class="footer-credit">
+      CINAI &mdash; Inteligencia Cinematografica<br>
+      Desarrollado por <span>Harlinson Olea</span>
+    </div>
+  </div>
+</div>
+
+<script>
+var currentStep   = 0;
+var currentPhase  = 0;
+var currentPrompt = null;
+var datos = {};
+
+var PASOS = [
+  { id:'basico', label:'El Proyecto', icon:'🎬', color:'#2563EB', campos:[
+    {key:'titulo',       label:'Titulo del proyecto',              ph:'El ultimo fotograma',                    tipo:'text'},
+    {key:'sinopsis',     label:'Sinopsis (3 lineas)',              ph:'Una historia sobre...',                  tipo:'textarea'},
+    {key:'genero',       label:'Genero cinematografico',           ph:'Drama / Documental / Ficcion / Hibrido', tipo:'text'},
+    {key:'duracion',     label:'Duracion objetivo',               ph:'75 minutos / cortometraje 20 min',       tipo:'text'},
+    {key:'tema_central', label:'Tema central o pregunta dramatica',ph:'Puede un pueblo recuperar su memoria?', tipo:'textarea'},
+    {key:'tono',         label:'Tono emocional del relato',        ph:'Melancolico, esperanzador, urgente...',  tipo:'text'}
+  ]},
+  { id:'comunidad', label:'Comunidad y Cultura', icon:'🏘️', color:'#0D9488', campos:[
+    {key:'comunidad',       label:'Nombre de la comunidad',        ph:'Comunidad indigena Zenu del Sinu',               tipo:'text'},
+    {key:'region',          label:'Region geografica y cultural',  ph:'Caribe colombiano, zona rural, tradicion oral...', tipo:'textarea'},
+    {key:'pais',            label:'Pais de produccion',             ph:'Colombia',                                         tipo:'text'},
+    {key:'idiomas',         label:'Idiomas y lenguas locales',      ph:'Espanol, Zenu. Subtitulos en ingles.',             tipo:'text'},
+    {key:'objetivo_social', label:'Objetivo social / cultural',    ph:'Preservar la memoria de los tejedores...',         tipo:'textarea'},
+    {key:'publico',         label:'Publico objetivo',               ph:'Jovenes de la comunidad, festivales de cine',     tipo:'text'}
+  ]},
+  { id:'produccion', label:'Equipo y Recursos', icon:'⚙️', color:'#6366F1', campos:[
+    {key:'presupuesto',  label:'Presupuesto total estimado',       ph:'$15.000 USD / $60 millones COP',                    tipo:'text'},
+    {key:'crew',         label:'Equipo humano disponible',         ph:'Director, 1 camarografo, 1 sonidista, 2 productores',tipo:'textarea'},
+    {key:'equipos',      label:'Equipos tecnicos',                 ph:'Sony FX3, lentes 24mm/50mm, grabadora Zoom H6',     tipo:'textarea'},
+    {key:'locaciones',   label:'Locaciones principales',           ph:'Rio Sinu, mercado local, casa de la tejedora',      tipo:'textarea'},
+    {key:'fecha_rodaje', label:'Fechas de rodaje',                 ph:'Enero - Febrero 2026',                              tipo:'text'},
+    {key:'dias_rodaje',  label:'Numero de dias de rodaje',         ph:'18 dias',                                           tipo:'text'}
+  ]},
+  { id:'personajes', label:'Personajes', icon:'🎭', color:'#8B5CF6', campos:[
+    {key:'protagonista',    label:'Protagonista (nombre, edad, perfil)',      ph:'Elena, 68 anos, ultima tejedora del pueblo',       tipo:'textarea'},
+    {key:'mundo_ordinario', label:'Mundo ordinario del protagonista',        ph:'Vive sola, teje cada dia, nadie aprende ya',       tipo:'textarea'},
+    {key:'llamado',         label:'El llamado a la aventura (detonante)',     ph:'Le dicen que van a demoler el taller comunitario', tipo:'textarea'},
+    {key:'antagonista',     label:'Antagonista o fuerza opositora',          ph:'El alcalde, la modernidad, el olvido colectivo',   tipo:'text'},
+    {key:'mentor',          label:'Figura del Mentor',                       ph:'El espiritu de su madre a traves del tejido',      tipo:'text'},
+    {key:'aliados',         label:'Aliados principales',                     ph:'Una joven periodista, el nieto rebelde',           tipo:'text'}
+  ]},
+  { id:'distribucion', label:'Distribucion y Fondos', icon:'🌎', color:'#C85A5A', campos:[
+    {key:'objetivo_distribucion',label:'Objetivo de distribucion',         ph:'Festivales internacionales y exhibicion comunitaria',tipo:'text'},
+    {key:'fondos_buscados',      label:'Fondos o convocatorias de interes',ph:'Ibermedia, FONPROCINE, Sundance Documentary',       tipo:'textarea'},
+    {key:'logros_equipo',        label:'Logros previos del equipo',        ph:'Cortometraje en FICCI 2023, beca Proimagenes 2024', tipo:'textarea'},
+    {key:'fecha_estreno',        label:'Fecha de estreno deseada',         ph:'Noviembre 2026',                                    tipo:'text'},
+    {key:'referencias_cine',     label:'Referencias cinematograficas',     ph:'Embrace of the Serpent, La Boyera',                tipo:'textarea'},
+    {key:'musica_region',        label:'Generos musicales / instrumentos', ph:'Cumbia, gaita, tambor',                            tipo:'text'}
+  ]}
+];
+
+function rv(key){ var v=datos[key]; return (v&&v.trim())?v.trim():'[por definir]'; }
+
+function generarPrompts(){
+  var t=rv('titulo'),sin=rv('sinopsis'),gen=rv('genero'),dur=rv('duracion');
+  var tem=rv('tema_central'),ton=rv('tono'),com=rv('comunidad'),reg=rv('region');
+  var pai=rv('pais'),idi=rv('idiomas'),obs=rv('objetivo_social'),pub=rv('publico');
+  var pre=rv('presupuesto'),cre=rv('crew'),equ=rv('equipos'),loc=rv('locaciones');
+  var fro=rv('fecha_rodaje'),dia=rv('dias_rodaje'),pro=rv('protagonista');
+  var mun=rv('mundo_ordinario'),lla=rv('llamado'),ant=rv('antagonista');
+  var men=rv('mentor'),ali=rv('aliados'),odi=rv('objetivo_distribucion');
+  var fon=rv('fondos_buscados'),log=rv('logros_equipo'),fes=rv('fecha_estreno');
+  var ref=rv('referencias_cine'),mus=rv('musica_region');
+
+  return [
+    {
+      fase:'PREPRODUCCION', color:'#2563EB', bg:'rgba(37,99,235,.08)', icon:'🗂️',
+      prompts:[
+        {
+          titulo:'Concepto para Cine Comunitario', etiqueta:'CONCEPTO',
+          texto:'Actua como productor cinematografico especialista en cine comunitario latinoamericano.\n\n'
+           +'CONTEXTO DE LA COMUNIDAD:\n'
+           +'- Comunidad / territorio: '+com+'\n- Ubicacion y contexto cultural: '+reg+'\n'
+           +'- Historia que se desea contar: '+sin+'\n- Publicos a los que va dirigida: '+pub+'\n\n'
+           +'OBJETIVOS DEL PROYECTO:\n'
+           +'- Objetivo social/cultural: '+obs+'\n- Tono narrativo: '+ton+'\n'
+           +'- Pais de produccion: '+pai+'\n- Idiomas: '+idi+'\n\n'
+           +'Con esta informacion, desarrolla:\n'
+           +'1. Concepto cinematografico solido con propuesta tematica y estetica\n'
+           +'2. Linea argumental con premisa, conflicto y resolucion para "'+t+'"\n'
+           +'3. Tono narrativo recomendado (documental, ficcion, hibrido, experimental)\n'
+           +'4. Referencias cinematograficas afines — el equipo menciona: '+ref+'\n'
+           +'5. Propuesta de participacion comunitaria en '+com+'\n'
+           +'6. Estrategia de pertinencia cultural y enfoque etico\n'
+           +'7. Posibles riesgos narrativos y como mitigarlos\n'
+           +'8. Sinopsis ejecutiva de 3 parrafos para presentar a fondos como '+fon
+        },
+        {
+          titulo:'Plan de Preproduccion Integral', etiqueta:'PLANIFICACION',
+          texto:'Actua como director de produccion cinematografica para el proyecto "'+t+'".\n\n'
+           +'DATOS DEL PROYECTO:\n'
+           +'- Titulo: '+t+'\n- Genero y formato: '+gen+' / '+dur+'\n'
+           +'- Presupuesto estimado: '+pre+'\n- Fecha de rodaje: '+fro+'\n'
+           +'- Dias de rodaje: '+dia+'\n- Locaciones: '+loc+'\n'
+           +'- Equipo: '+cre+'\n- Comunidad: '+com+', '+pai+'\n\n'
+           +'Por favor genera:\n'
+           +'1. Cronograma de preproduccion semana a semana (8 semanas)\n'
+           +'2. Lista de departamentos necesarios y sus responsabilidades\n'
+           +'3. Plan de scouting en: '+loc+'\n'
+           +'4. Plan de casting comunitario en '+com+'\n'
+           +'5. Lista de permisos y gestiones legales en '+pai+'\n'
+           +'6. Plan de comunicacion con la comunidad\n'
+           +'7. Presupuesto estimado por departamento basado en '+pre+'\n'
+           +'8. Plan de contingencias\n'
+           +'9. Checklist de preproduccion de 60 puntos'
+        },
+        {
+          titulo:'Diseno de Direccion de Arte Cultural', etiqueta:'DIRECCION DE ARTE',
+          texto:'Actua como director de arte especializado en cine latinoamericano para "'+t+'".\n\n'
+           +'UNIVERSO VISUAL:\n'
+           +'- Region cultural: '+reg+'\n- Comunidad de referencia: '+com+', '+pai+'\n'
+           +'- Paleta emocional: '+ton+'\n- Referencias visuales: '+ref+'\n'
+           +'- Locaciones a intervenir: '+loc+'\n\n'
+           +'Desarrolla:\n'
+           +'1. Concepto visual maestro: cromatica, textura, luz y sombra para "'+t+'"\n'
+           +'2. Diseno de cada espacio principal en '+loc+'\n'
+           +'3. Paleta de vestuario para '+pro+' y personajes secundarios\n'
+           +'4. Propuesta de utileria simbolica conectada al tema: '+tem+'\n'
+           +'5. Moodboard textual por escena\n'
+           +'6. Plan de intervencion de locaciones con recursos de '+com+'\n'
+           +'7. Como integrar autenticamente la cultura de '+reg+' sin folclorizar'
+        }
+      ]
+    },
+    {
+      fase:'PRODUCCION', color:'#6366F1', bg:'rgba(99,102,241,.08)', icon:'📷',
+      prompts:[
+        {
+          titulo:'Plan de Rodaje Tecnico', etiqueta:'RODAJE',
+          texto:'Actua como primer asistente de direccion (1er AD) para "'+t+'".\n\n'
+           +'DATOS DE RODAJE:\n'
+           +'- Proyecto: '+t+' — '+gen+' — '+dur+'\n- Locaciones: '+loc+'\n'
+           +'- Crew disponible: '+cre+'\n- Equipos: '+equ+'\n'
+           +'- Dias de rodaje: '+dia+' — Fechas: '+fro+'\n'
+           +'- Comunidad: '+com+', '+reg+'\n- Idiomas en set: '+idi+'\n\n'
+           +'Genera:\n'
+           +'1. Plan de rodaje optimizado (shooting schedule) por locacion y luz\n'
+           +'2. Hoja de llamado modelo para los primeros 3 dias\n'
+           +'3. Protocolo de seguridad para actores no profesionales de '+com+'\n'
+           +'4. Sistema de reporte diario de produccion\n'
+           +'5. Plan de trabajo con la comunidad en set\n'
+           +'6. Estrategia de B-roll cultural en '+reg+'\n'
+           +'7. Protocolo de consentimiento con personas filmadas\n'
+           +'8. Plan de backup ante fallas tecnicas o climaticas'
+        },
+        {
+          titulo:'Direccion de Actores No Profesionales', etiqueta:'DIRECCION',
+          texto:'Actua como director especializado en actores naturales para "'+t+'".\n\n'
+           +'PERFIL DEL ELENCO:\n'
+           +'- Protagonista: '+pro+'\n- Aliados: '+ali+'\n'
+           +'- Idiomas: '+idi+'\n- Comunidad: '+com+'\n'
+           +'- Escenas complejas relacionadas con: "'+lla+'"\n\n'
+           +'Desarrolla:\n'
+           +'1. Plan de talleres de preparacion actoral comunitaria (5 sesiones)\n'
+           +'2. Ejercicios de confianza y desinhibicion frente a camara\n'
+           +'3. Tecnicas de improvisacion guiada para escenas de '+pro+'\n'
+           +'4. Como construir confianza con la comunidad de '+com+'\n'
+           +'5. Direccion especifica para la escena del llamado: "'+lla+'"\n'
+           +'6. Manejo de bloqueos emocionales vinculados a '+tem+'\n'
+           +'7. Proceso de devolucion y valoracion con la comunidad'
+        },
+        {
+          titulo:'Plan de Fotografia Cinematografica', etiqueta:'FOTOGRAFIA',
+          texto:'Actua como director de fotografia (DP) para "'+t+'".\n\n'
+           +'DATOS TECNICOS:\n'
+           +'- Equipos disponibles: '+equ+'\n- Locaciones: '+loc+'\n'
+           +'- Paleta emocional: '+ton+'\n- Referencias visuales: '+ref+'\n'
+           +'- Region: '+reg+'\n- Presupuesto total: '+pre+'\n\n'
+           +'Crea:\n'
+           +'1. Concepto fotografico para "'+t+'": encuadre, movimiento, profundidad\n'
+           +'2. Look de color por acto — tono general: '+ton+'\n'
+           +'3. Plan de iluminacion para las locaciones: '+loc+'\n'
+           +'4. Estrategia de camara con: '+equ+'\n'
+           +'5. Planos recomendados para escenas con '+pro+'\n'
+           +'6. Plan de golden hour para escenas en '+reg+'\n'
+           +'7. Propuesta de fotografia para archivo comunitario de '+com
+        }
+      ]
+    },
+    {
+      fase:'POSTPRODUCCION', color:'#8B5CF6', bg:'rgba(139,92,246,.08)', icon:'✂️',
+      prompts:[
+        {
+          titulo:'Plan de Edicion y Montaje', etiqueta:'EDICION',
+          texto:'Actua como editor cinematografico para "'+t+'".\n\n'
+           +'DATOS DEL MATERIAL:\n'
+           +'- Proyecto: '+t+' — '+gen+'\n- Duracion objetivo: '+dur+'\n'
+           +'- Tono emocional: '+ton+'\n- Comunidad representada: '+com+'\n\n'
+           +'Desarrolla:\n'
+           +'1. Estrategia de organizacion del material de "'+t+'"\n'
+           +'2. Plan de montaje alineado al tema: "'+tem+'"\n'
+           +'3. Estructura por actos con tiempos sugeridos para '+dur+'\n'
+           +'4. Ritmo editorial para las escenas de '+pro+'\n'
+           +'5. Propuesta de corte de trailer para festivales: '+odi+'\n'
+           +'6. Decisiones de montaje que fortalezcan la identidad cultural de '+com+'\n'
+           +'7. Formatos de exportacion para: '+odi
+        },
+        {
+          titulo:'Diseno Sonoro y Musica Original', etiqueta:'SONIDO',
+          texto:'Actua como disenador de sonido y compositor para "'+t+'".\n\n'
+           +'UNIVERSO SONORO:\n'
+           +'- Region cultural: '+reg+'\n- Generos musicales / instrumentos: '+mus+'\n'
+           +'- Emociones clave: '+ton+'\n- Comunidad: '+com+', '+pai+'\n'
+           +'- Presupuesto: '+pre+'\n- Idiomas: '+idi+'\n\n'
+           +'Genera:\n'
+           +'1. Concepto sonoro maestro para "'+t+'"\n'
+           +'2. Mapa de musica por escenas: diegetica, no diegetica, silencio dramatico\n'
+           +'3. Plan de grabacion de sonidos de campo en '+reg+'\n'
+           +'4. Leitmotivs para '+pro+' y '+ant+'\n'
+           +'5. Guia para trabajar con musicos de '+com+' — generos: '+mus+'\n'
+           +'6. Masterizacion para festivales y plataformas digitales\n'
+           +'7. Licenciamiento de musica tradicional con la comunidad'
+        },
+        {
+          titulo:'Distribucion, Festivales y Circulacion', etiqueta:'DISTRIBUCION',
+          texto:'Actua como estratega de distribucion para "'+t+'".\n\n'
+           +'PROYECTO TERMINADO:\n'
+           +'- Titulo: '+t+' — '+dur+'\n- Genero: '+gen+'\n- Pais: '+pai+'\n'
+           +'- Idiomas: '+idi+'\n- Comunidad protagonista: '+com+'\n'
+           +'- Fondos de interes: '+fon+'\n- Objetivo: '+odi+'\n'
+           +'- Fecha de estreno deseada: '+fes+'\n- Logros del equipo: '+log+'\n\n'
+           +'Desarrolla:\n'
+           +'1. Mapa de festivales internacionales de cine cultural para "'+t+'"\n'
+           +'2. Estrategia de premiere: local en '+com+' vs. festival internacional\n'
+           +'3. Plan de exhibicion itinerante en comunidades de '+reg+'\n'
+           +'4. Postulacion a: '+fon+'\n'
+           +'5. Campana digital y materiales de prensa\n'
+           +'6. Modelo de acuerdo con '+com+' sobre beneficios de distribucion\n'
+           +'7. Plan de archivo en manos de la comunidad'
+        }
+      ]
+    },
+    {
+      fase:'GUION Y VIAJE DEL HEROE', color:'#E05555', bg:'rgba(224,85,85,.08)', icon:'📝',
+      prompts:[
+        {
+          titulo:'Estructura: El Viaje del Heroe', etiqueta:'ESTRUCTURA HEROICA',
+          texto:'Actua como guionista profesional con dominio del Viaje del Heroe (Campbell / Vogler) para "'+t+'".\n\n'
+           +'DATOS DE LA HISTORIA:\n'
+           +'- Titulo: '+t+'\n- Genero: '+gen+' — '+dur+'\n'
+           +'- Protagonista: '+pro+'\n- Mundo ordinario: '+mun+'\n'
+           +'- El llamado a la aventura: '+lla+'\n- Antagonista: '+ant+'\n'
+           +'- Mentor: '+men+'\n- Aliados: '+ali+'\n'
+           +'- Tema central: '+tem+'\n- Comunidad: '+com+', '+reg+'\n- Tono: '+ton+'\n\n'
+           +'GENERA LA ESTRUCTURA EN 12 ETAPAS:\n\n'
+           +'ACTO I — EL MUNDO ORDINARIO:\n'
+           +'1. MUNDO ORDINARIO: Contexto inicial de '+pro+' en '+com+'. Minimo 3 escenas.\n'
+           +'2. LLAMADO A LA AVENTURA: "'+lla+'" — escena bisagra detallada.\n'
+           +'3. RECHAZO DEL LLAMADO: '+pro+' duda. Escena de conflicto interno.\n'
+           +'4. ENCUENTRO CON EL MENTOR: '+men+' entrega las herramientas simbolicas.\n'
+           +'5. CRUCE DEL UMBRAL: El momento de no retorno.\n\n'
+           +'ACTO II — EL MUNDO ESPECIAL:\n'
+           +'6. PRUEBAS, ALIADOS Y ENEMIGOS: '+pro+' enfrenta obstaculos. '+ali+' aparecen. '+ant+' actua.\n'
+           +'7. APROXIMACION A LA CUEVA PROFUNDA: Preparacion para la prueba maxima.\n'
+           +'8. PRUEBA SUPREMA: Crisis vinculada a "'+tem+'".\n'
+           +'9. RECOMPENSA: '+pro+' obtiene lo que buscaba, con un costo.\n\n'
+           +'ACTO III — EL REGRESO:\n'
+           +'10. CAMINO DE REGRESO: Nuevos peligros. La transformacion es puesta a prueba.\n'
+           +'11. RESURRECCION: Climax. '+pro+' demuestra su cambio completo.\n'
+           +'12. REGRESO CON EL ELIXIR: '+pro+' vuelve transformado a '+com+'.\n\n'
+           +'ENTREGA TAMBIEN:\n'
+           +'- Arco de transformacion completo de '+pro+'\n'
+           +'- 3 temas simbolicos que atraviesen la historia\n'
+           +'- Dialogo modelo para la escena del llamado: "'+lla+'"\n'
+           +'- Logline profesional de 2 lineas para '+fon
+        },
+        {
+          titulo:'Desarrollo de los 8 Arquetipos de Vogler', etiqueta:'ARQUETIPOS',
+          texto:'Actua como guionista especializado en arquetipos narrativos para "'+t+'".\n\n'
+           +'UNIVERSO DEL PROYECTO:\n'
+           +'- Historia: '+sin+'\n- Comunidad: '+com+', '+reg+'\n'
+           +'- Conflicto central: '+tem+'\n- Tono: '+ton+'\n\n'
+           +'Desarrolla los 8 arquetipos para "'+t+'":\n\n'
+           +'1. EL HEROE — '+pro+':\n'
+           +'Perfil psicologico, herida emocional, deseo vs. necesidad, fortaleza y defecto, arco en 3 momentos.\n\n'
+           +'2. EL MENTOR — '+men+':\n'
+           +'Historia de vida, que sabe que '+pro+' no sabe, que sacrifica, escena de transmision de conocimiento.\n\n'
+           +'3. EL GUARDIAN DEL UMBRAL:\n'
+           +'Relacionado con "'+lla+'" — quien se opone primero, como '+pro+' lo supera.\n\n'
+           +'4. EL EMBAUCADOR:\n'
+           +'Funcion comica y filosofica en '+com+', verdad incomoda que dice.\n\n'
+           +'5. EL HERALDO:\n'
+           +'Quien o que entrega el llamado: "'+lla+'"\n\n'
+           +'6. LOS ALIADOS — '+ali+':\n'
+           +'Por que siguen a '+pro+', que aporta cada uno, momento de lealtad maxima.\n\n'
+           +'7. EL ANTAGONISTA / SOMBRA — '+ant+':\n'
+           +'Historia de origen, por que cree tener razon, que comparte con '+pro+', su humanidad.\n\n'
+           +'8. LA FIGURA CAMBIANTE:\n'
+           +'Personaje de lealtad ambigua, su revelacion en "'+t+'".\n\n'
+           +'Finaliza con: Mapa de relaciones y como generan los conflictos de "'+t+'".'
+        }
+      ]
+    },
+    {
+      fase:'FONDOS Y POSTULACION', color:'#0D9488', bg:'rgba(13,148,136,.08)', icon:'💰',
+      prompts:[
+        {
+          titulo:'Dossier y Postulacion a Fondos', etiqueta:'FINANCIAMIENTO',
+          texto:'Actua como gestor cultural y productor con experiencia en fondos para cine latinoamericano. El proyecto es "'+t+'".\n\n'
+           +'DATOS PARA POSTULACION:\n'
+           +'- Titulo: '+t+'\n- Sinopsis: '+sin+'\n- Pais: '+pai+'\n'
+           +'- Presupuesto total: '+pre+'\n- Fondos de interes: '+fon+'\n'
+           +'- Equipo: '+cre+'\n- Logros previos: '+log+'\n'
+           +'- Comunidad: '+com+', '+reg+'\n- Objetivo social: '+obs+'\n- Fecha de estreno: '+fes+'\n\n'
+           +'Desarrolla:\n'
+           +'1. Dossier ejecutivo de 1 pagina para "'+t+'"\n'
+           +'2. Nota de intencion del director en voz personal y cinematografica\n'
+           +'3. Justificacion de pertinencia cultural de '+com+'\n'
+           +'4. Presupuesto narrativo basado en '+pre+'\n'
+           +'5. Carta de presentacion para: '+fon+'\n'
+           +'6. Lista de 15 convocatorias vigentes para este tipo de proyecto\n'
+           +'7. Estrategia de co-produccion internacional\n'
+           +'8. Plan de crowdfunding comunitario en '+com
+        },
+        {
+          titulo:'PROMPT MAESTRO — Biblia del Proyecto', etiqueta:'PROMPT MAESTRO',
+          texto:'Actua como un equipo completo de desarrollo cinematografico. Construye la biblia completa de produccion para "'+t+'".\n\n'
+           +'DATOS COMPLETOS:\n'
+           +'- Titulo: '+t+'\n- Sinopsis: '+sin+'\n- Genero / Formato: '+gen+' / '+dur+'\n'
+           +'- Comunidad: '+com+', '+reg+', '+pai+'\n- Idiomas: '+idi+'\n'
+           +'- Protagonista: '+pro+'\n- Antagonista: '+ant+'\n- Mentor: '+men+'\n- Aliados: '+ali+'\n'
+           +'- Llamado: '+lla+'\n- Tema: '+tem+'\n- Tono: '+ton+'\n'
+           +'- Presupuesto: '+pre+'\n- Equipo: '+cre+'\n- Equipos: '+equ+'\n'
+           +'- Locaciones: '+loc+'\n- Rodaje: '+fro+' ('+dia+' dias)\n'
+           +'- Referencias: '+ref+'\n- Musica: '+mus+'\n'
+           +'- Distribucion: '+odi+'\n- Fondos: '+fon+'\n- Logros: '+log+'\n- Estreno: '+fes+'\n\n'
+           +'GENERA LA BIBLIA COMPLETA:\n\n'
+           +'PARTE 1 — DESARROLLO: Logline, sinopsis en 3 versiones, Viaje del Heroe (12 etapas), perfil de personajes, nota de intencion.\n\n'
+           +'PARTE 2 — PREPRODUCCION: Cronograma 8 semanas, departamentos, casting y scouting en '+loc+', presupuesto por departamento (total: '+pre+').\n\n'
+           +'PARTE 3 — PRODUCCION: Shooting schedule '+dia+' dias, concepto fotografico para '+reg+', protocolo con la comunidad de '+com+'.\n\n'
+           +'PARTE 4 — POSTPRODUCCION: Plan de edicion para '+dur+', diseno sonoro con '+mus+', estrategia para '+odi+'.\n\n'
+           +'PARTE 5 — IMPACTO: Estrategia de prensa, exhibicion comunitaria en '+reg+', postulacion a '+fon+', indicadores de impacto social en '+com+'.\n\n'
+           +'Se exhaustivo, creativo y especifico. Este documento sera la biblia de "'+t+'".'
+        }
+      ]
+    },
+    {
+      fase:'MERCADO Y ROI', color:'#C9A84C', bg:'rgba(201,168,76,.08)', icon:'📈',
+      prompts:[
+        {
+          titulo:'Alto Potencial de Demanda y Canales de Distribucion', etiqueta:'ANALISIS DE MERCADO',
+          texto:'Actua como un consultor de mercado audiovisual y especialista en distribucion cinematografica internacional, con enfoque en cine latinoamericano, documental y cine cultural.\n\n'
+           +'DATOS DEL PROYECTO:\n'
+           +'- Titulo: '+t+'\n- Genero: '+gen+'\n- Duracion: '+dur+'\n'
+           +'- Sinopsis: '+sin+'\n- Tema central: '+tem+'\n- Comunidad: '+com+', '+reg+', '+pai+'\n'
+           +'- Tono: '+ton+'\n- Referencias: '+ref+'\n- Objetivo de distribucion: '+odi+'\n\n'
+           +'ANALISIS 1 — POTENCIAL DE DEMANDA DE LA HISTORIA:\n'
+           +'1. Mapa de audiencias globales: quien en el mundo esta esperando esta historia y por que\n'
+           +'2. Tendencias del mercado audiovisual que favorecen proyectos como "'+t+'"\n'
+           +'3. Datos de consumo de cine cultural, documental e indigena en plataformas (2023-2025)\n'
+           +'4. Proyectos similares exitosos: cuanto recaudaron, donde circularon, que audiencias captaron\n'
+           +'5. Potencial de crossover: cine comunitario que llego a audiencias masivas (casos de estudio)\n'
+           +'6. Identificacion de nichos de alta demanda: academia, diaspora, comunidades LATAM, festivales\n'
+           +'7. Valoracion del activo de los derechos culturales de '+com+' como diferenciador de mercado\n\n'
+           +'ANALISIS 2 — CANALES DE DISTRIBUCION POSIBLES:\n'
+           +'A. FESTIVALES INTERNACIONALES (por nivel de impacto y acceso):\n'
+           +'- Tier 1 (Oscar-qualifying, Berlinale, Tribeca, IDFA, Hot Docs)\n'
+           +'- Tier 2 (Cartagena FICCI, Bafici, Sanfic, FicValdivia, Ambulante)\n'
+           +'- Tier 3 (festivales especializados en cine indigena, ambiental, derechos humanos)\n\n'
+           +'B. PLATAFORMAS DIGITALES:\n'
+           +'- Netflix, Amazon, MUBI, Filmin, Retina Latina, Cine Colombia Digital\n'
+           +'- YouTube Premium, Vimeo On Demand\n'
+           +'- Criterios de aceptacion para cada plataforma para un proyecto como "'+t+'"\n\n'
+           +'C. TELEVISION PUBLICA Y COOPERACION:\n'
+           +'- RTVC Colombia, Canal Trece, Teleantioquia\n'
+           +'- Arte (Francia/Alemania), TVE, BBC World, Al Jazeera Documentary\n'
+           +'- Fondos de coproduccion con TV publica europea\n\n'
+           +'D. CIRCUITOS NO CONVENCIONALES (mayor rentabilidad por bajo costo):\n'
+           +'- Cine club universitario: 300+ universidades en LATAM\n'
+           +'- Circuitos de derechos humanos y cooperacion internacional\n'
+           +'- Instituciones culturales: alianzas Francesas, Centros Colombo-Americanos, IDARTES\n'
+           +'- Streaming educativo: plataformas escolares, ministerios de educacion\n\n'
+           +'E. VENTAS INTERNACIONALES:\n'
+           +'- Mercados de cine: MIPCOM, AFM (American Film Market), Ventana Sur, Sanfic Industria\n'
+           +'- Agentes de ventas especializados en cine latinoamericano independiente\n'
+           +'- Estrategia de venta de derechos por territorios y ventanas de exhibicion\n\n'
+           +'CONCLUSION:\n'
+           +'- Score de potencial de mercado para "'+t+'" (1-10) con justificacion\n'
+           +'- Los 3 canales con mayor potencial de impacto y retorno para este proyecto\n'
+           +'- Cronograma de distribucion sugerido: de premiere a plataformas digitales'
+        },
+        {
+          titulo:'Plan de Recuperacion de la Inversion', etiqueta:'PLAN ROI',
+          texto:'Actua como un productor ejecutivo y estratega financiero especializado en cine independiente latinoamericano con experiencia en estructuracion de retornos de inversion para proyectos culturales y comunitarios.\n\n'
+           +'DATOS FINANCIEROS DEL PROYECTO:\n'
+           +'- Titulo: '+t+'\n- Genero: '+gen+'\n- Duracion: '+dur+'\n'
+           +'- Presupuesto total de produccion: '+pre+'\n'
+           +'- Pais de produccion: '+pai+'\n- Comunidad: '+com+', '+reg+'\n'
+           +'- Fondos o apoyos buscados: '+fon+'\n'
+           +'- Objetivo de distribucion: '+odi+'\n'
+           +'- Logros del equipo: '+log+'\n- Fecha de estreno deseada: '+fes+'\n\n'
+           +'GENERA EL PLAN COMPLETO DE RECUPERACION DE INVERSION:\n\n'
+           +'PARTE 1 — ESTRUCTURA FINANCIERA DEL PROYECTO:\n'
+           +'1. Modelo de financiamiento mixto: fondos publicos + inversion privada + coproducciones\n'
+           +'2. Porcentaje recomendado por fuente de financiamiento para un proyecto como "'+t+'"\n'
+           +'3. Estructura legal recomendada: tipo de empresa, contrato de coproduccion, derechos\n'
+           +'4. Tabla de retorno: quien recupera primero, en que proporcion y en que plazo\n'
+           +'5. Clausulas de recoupment estandar para cine independiente latinoamericano\n\n'
+           +'PARTE 2 — PROYECCION DE INGRESOS POR VENTANA DE EXHIBICION:\n\n'
+           +'VENTANA 1 — FESTIVALES (meses 1-18 post-estreno):\n'
+           +'- Ingresos estimados por premios y reconocimientos\n'
+           +'- Impacto en valor de venta: como un premio en Berlinale o Sundance multiplica el precio\n'
+           +'- Estrategia de premiere para maximizar el efecto festival\n\n'
+           +'VENTANA 2 — VENTA DE DERECHOS INTERNACIONALES (meses 6-24):\n'
+           +'- Rango de precios por territorio para un documental / ficcion cultural latinoamericano\n'
+           +'- Territorios prioritarios para "'+t+'" segun su contenido: '+tem+'\n'
+           +'- Agentes de ventas recomendados y su comision estandar\n\n'
+           +'VENTANA 3 — TELEVISION PUBLICA Y CABLE (meses 12-30):\n'
+           +'- Tarifas de venta a canales publicos de Colombia, LATAM y Europa\n'
+           +'- Modelo de coproduccion anticipada con TV publica (pre-buy)\n'
+           +'- Proyeccion de ingresos por licenciamiento de 2 anos\n\n'
+           +'VENTANA 4 — PLATAFORMAS DIGITALES (meses 18-36):\n'
+           +'- Modelo SVOD (Netflix, Amazon), AVOD (YouTube) y TVOD (Vimeo)\n'
+           +'- Estimacion de ingresos para un titulo como "'+t+'" en cada modelo\n'
+           +'- Estrategia de self-distribution para maximizar el margen\n\n'
+           +'VENTANA 5 — CIRCUITOS ALTERNATIVOS Y EDUCATIVOS (permanente):\n'
+           +'- Licencias institucionales: universidades, centros culturales, ONGs\n'
+           +'- Precio de licencia anual vs. venta de derechos definitiva\n'
+           +'- Proyeccion de ingresos acumulados en 5 anos\n\n'
+           +'PARTE 3 — FLUJO DE CAJA Y PUNTO DE EQUILIBRIO:\n'
+           +'1. Tabla de flujo de caja proyectado mensual (anos 1, 2 y 3)\n'
+           +'2. Calculo del punto de equilibrio (break-even) para "'+t+'"\n'
+           +'3. Escenario conservador (50% de proyeccion), moderado (100%) y optimista (150%)\n'
+           +'4. Indicadores financieros: ROI estimado, TIR, payback period\n\n'
+           +'PARTE 4 — ESTRATEGIA DE ATRACCION DE INVERSORES:\n'
+           +'1. Perfil del inversor ideal para "'+t+'" (impacto social + retorno financiero)\n'
+           +'2. Pitch financiero de 1 pagina: por que invertir en este proyecto\n'
+           +'3. Modelos de inversion: equity, deuda, mecenazgo cultural, inversion de impacto\n'
+           +'4. Incentivos fiscales disponibles para inversores en cine en '+pai+'\n'
+           +'5. Como presentar el proyecto a fondos de capital de riesgo cultural y ESG\n\n'
+           +'PARTE 5 — VALORACION DEL ACTIVO CULTURAL:\n'
+           +'1. El valor de los derechos de "'+t+'" mas alla del dinero: patrimonio cultural, archivo, legado\n'
+           +'2. Modelo de reinversion de ganancias en la comunidad de '+com+'\n'
+           +'3. Como este proyecto puede generar un ecosistema audiovisual sostenible en '+reg+'\n'
+           +'4. Proyeccion de impacto economico indirecto para la comunidad (turismo cultural, artesanias, etc.)\n\n'
+           +'Entrega el plan en formato ejecutivo, con tablas descriptivas, cifras reales del mercado latinoamericano y recomendaciones concretas para "'+t+'".'
+        }
+      ]
+    }
+  ];
+}
+
+
+// ── TOAST ──────────────────────────────────────────────────────
+function showToast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='show'+(type==='err'?' err':'');
+  clearTimeout(t._t);
+  t._t=setTimeout(function(){t.className='';},2800);
+}
+
+// ── AUTO SAVE / LOAD ────────────────────────────────────────────
+function saveDatos(){
+  try{localStorage.setItem('cinai-d',JSON.stringify(datos));}catch(e){}
+}
+function loadDatos(){
+  try{var s=localStorage.getItem('cinai-d');if(s)datos=JSON.parse(s);}catch(e){}
+}
+
+// ── VALIDATE STEP ───────────────────────────────────────────────
+function validateStep(){
+  var paso=PASOS[currentStep];
+  var req=['titulo','sinopsis','genero','pais','protagonista','llamado'];
+  var firstErr=null;
+  paso.campos.forEach(function(c){
+    var el=document.getElementById('f_'+c.key);
+    if(!el)return;
+    el.classList.remove('field-error');
+    var old=document.getElementById('err_'+c.key);
+    if(old)old.remove();
+    if(req.indexOf(c.key)!==-1&&(!datos[c.key]||!datos[c.key].trim())){
+      el.classList.add('field-error');
+      var d=document.createElement('div');
+      d.id='err_'+c.key;
+      d.className='err-msg';
+      d.textContent='Campo requerido para mejores resultados';
+      el.parentNode.appendChild(d);
+      if(!firstErr)firstErr=c.label;
+    }
+  });
+  return firstErr;
+}
+
+// ── EXPORT DATA ─────────────────────────────────────────────────
+function exportData(fmt){
+  var safe=(datos.titulo||'cinai').toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+  if(fmt==='json'){
+    dlBlob(new Blob([JSON.stringify(datos,null,2)],{type:'application/json'}),safe+'-datos.json');
+    showToast('Exportado: '+safe+'-datos.json');
+    return;
+  }
+  if(fmt==='txt'){
+    var lines=['CINAI — DATOS DEL PROYECTO','='.repeat(44),''];
+    PASOS.forEach(function(paso){
+      lines.push('[ '+paso.label.toUpperCase()+' ]','');
+      paso.campos.forEach(function(c){
+        lines.push('> '+c.label+':','  '+(datos[c.key]||'[sin datos]'),'');
+      });
+    });
+    dlBlob(new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}),safe+'-datos.txt');
+    showToast('Exportado: '+safe+'-datos.txt');
+    return;
+  }
+  if(fmt==='prompts'){
+    var all=generarPrompts();
+    var out=['CINAI — PROMPTS GENERADOS','='.repeat(44),'Proyecto: '+(datos.titulo||'Sin titulo'),'Generado: '+new Date().toLocaleDateString('es-CO'),'',''];
+    all.forEach(function(fase){
+      out.push('\n[[ '+fase.fase+' ]]','');
+      fase.prompts.forEach(function(p){
+        out.push('-- '+p.etiqueta+': '+p.titulo,'');
+        out.push(p.texto,'','---','');
+      });
+    });
+    dlBlob(new Blob([out.join('\n')],{type:'text/plain;charset=utf-8'}),safe+'-prompts.txt');
+    showToast('Todos los prompts exportados');
+    return;
+  }
+}
+function dlBlob(blob,name){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},300);
+}
+
+// ── CLEAR PROJECT ───────────────────────────────────────────────
+function clearProject(){
+  if(!confirm('Esto borrara todos los datos del proyecto. Continuar?'))return;
+  datos={};
+  try{localStorage.removeItem('cinai-d');}catch(e){}
+  currentStep=0;
+  loadDatos();
+irA('inicio');
+  showToast('Proyecto eliminado');
+}
+
+
+// ── NAVEGACION ─────────────────────────────────────────────────
+function irA(screen){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+  document.getElementById('screen-'+screen).classList.add('active');
+  window.scrollTo(0,0);
+  if(screen==='form')    renderForm();
+  if(screen==='prompts') renderPrompts();
+}
+
+// ── FORMULARIO ─────────────────────────────────────────────────
+function renderForm(){
+  var paso=PASOS[currentStep];
+  var pct=Math.round(currentStep/PASOS.length*100);
+  document.getElementById('progress-bar').style.width=pct+'%';
+  document.getElementById('form-pct').textContent=pct+'% completado';
+  document.getElementById('form-step-lbl').textContent='Paso '+(currentStep+1)+'/'+PASOS.length;
+
+  // tabs
+  var te=document.getElementById('form-tabs'); te.innerHTML='';
+  for(var ti=0;ti<PASOS.length;ti++){
+    (function(i){
+      var p=PASOS[i];
+      var b=document.createElement('button');
+      b.className='tab-btn'+(i===currentStep?' active':'');
+      if(i===currentStep){b.style.color=p.color;b.style.borderBottomColor=p.color;}
+      b.innerHTML=p.icon+' '+p.label+(i<currentStep?' <span style="font-size:.6rem;color:var(--teal-l)">&#10003;</span>':'');
+      b.onclick=function(){goStep(i);};
+      te.appendChild(b);
+    })(ti);
+  }
+
+  // body
+  var body=document.getElementById('form-body');
+  body.className='form-wrap fade-up';
+  var html='<div class="step-head">'
+    +'<div class="step-num" style="background:'+paso.color+'18;border:1px solid '+paso.color+'30">'+paso.icon+'</div>'
+    +'<div><div class="step-label" style="color:'+paso.color+'">'+paso.label+'</div>'
+    +'<div class="step-hint">Paso '+(currentStep+1)+' de '+PASOS.length+' &mdash; completa los campos de tu proyecto</div>'
+    +'</div></div>';
+
+  for(var fi=0;fi<paso.campos.length;fi++){
+    var c=paso.campos[fi];
+    var val=(datos[c.key]||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    var bc=datos[c.key]?'border-color:'+paso.color+'50':'';
+    html+='<div class="field"><label>'+c.label+'</label>';
+    if(c.tipo==='textarea'){
+      html+='<textarea id="f_'+c.key+'" rows="3" placeholder="'+c.ph+'"'
+        +' oninput="datos[\''+c.key+'\']=this.value;saveDatos()"'
+        +' onfocus="this.style.borderColor=\''+paso.color+'\';this.style.boxShadow=\'0 0 0 3px '+paso.color+'18\'"'
+        +' onblur="this.style.borderColor=this.value?\''+paso.color+'40\':\'var(--line)\';this.style.boxShadow=\'none\'"'
+        +(bc?' style="'+bc+'"':'')+'>'+( datos[c.key]||'')+'</textarea>';
+    } else {
+      html+='<input id="f_'+c.key+'" type="text" placeholder="'+c.ph+'" value="'+val+'"'
+        +' oninput="datos[\''+c.key+'\']=this.value;saveDatos()"'
+        +' onfocus="this.style.borderColor=\''+paso.color+'\';this.style.boxShadow=\'0 0 0 3px '+paso.color+'18\'"'
+        +' onblur="this.style.borderColor=this.value?\''+paso.color+'40\':\'var(--line)\';this.style.boxShadow=\'none\'"'
+        +(bc?' style="'+bc+'"':'')+'/>';
+    }
+    html+='</div>';
+  }
+
+  html+='<div class="form-nav">';
+  html+=currentStep>0
+    ?'<button class="btn-back" onclick="goStep(currentStep-1)">&larr; Atras</button>'
+    :'<button class="btn-back" onclick="irA(\'inicio\')">&larr; Inicio</button>';
+  html+=currentStep<PASOS.length-1
+    ?'<button class="btn-next" style="background:linear-gradient(135deg,'+paso.color+','+paso.color+'cc)" onclick="goStep(currentStep+1)">Siguiente &rarr;</button>'
+    :'<button class="btn-next" style="background:linear-gradient(135deg,var(--blue),#1D4ED8)" onclick="irA(\'prompts\')">&#127916; Generar Prompts</button>';
+  html+='</div>';
+  if(currentStep<PASOS.length-1)
+    html+='<button class="btn-skip" onclick="irA(\'prompts\')">Generar con los datos actuales &rarr;</button>';
+
+  body.innerHTML=html;
+  void body.offsetWidth;
+}
+
+function goStep(i){
+  if(i>currentStep){
+    var firstErr=validateStep();
+    if(firstErr){
+      showToast('Completa: '+firstErr,'err');
+      return;
+    }
+  }
+  currentStep=i;renderForm();window.scrollTo(0,0);
+}
+
+// ── PROMPTS ────────────────────────────────────────────────────
+function renderPrompts(){
+  document.getElementById('p-title').textContent=datos.titulo||'Mi Proyecto';
+  var mp=[];
+  if(datos.genero)mp.push(datos.genero);
+  if(datos.duracion)mp.push(datos.duracion);
+  if(datos.pais)mp.push(datos.pais);
+  document.getElementById('p-meta').textContent=mp.join(' · ');
+
+  var all=generarPrompts();
+  var pt=document.getElementById('phase-tabs'); pt.innerHTML='';
+  for(var pi=0;pi<all.length;pi++){
+    (function(i){
+      var f=all[i];
+      var b=document.createElement('button');
+      b.className='tab-btn'+(i===currentPhase?' active':'');
+      if(i===currentPhase){b.style.color=f.color;b.style.borderBottomColor=f.color;}
+      b.textContent=f.icon+' '+f.fase;
+      b.onclick=function(){currentPhase=i;currentPrompt=null;renderPrompts();};
+      pt.appendChild(b);
+    })(pi);
+  }
+  renderPhase(all);
+}
+
+function renderPhase(all){
+  var f=all[currentPhase];
+  var body=document.getElementById('prompts-body');
+  var html='';
+
+  if(currentPrompt===null){
+    var fc=Object.keys(datos).filter(function(k){return datos[k]&&datos[k].trim();}).length;
+    html+='<div class="phase-head" style="background:'+f.bg+';border-color:'+f.color+'25">'
+      +'<div class="phase-icon" style="background:'+f.color+'15;border:1px solid '+f.color+'25">'+f.icon+'</div>'
+      +'<div><div class="phase-title" style="color:'+f.color+'">'+f.fase+'</div>'
+      +'<div class="phase-sub">'+f.prompts.length+' prompts generados para: <span style="color:'+f.color+'80">'+(datos.titulo||'tu proyecto')+'</span></div>'
+      +'</div></div>';
+
+    for(var i=0;i<f.prompts.length;i++){
+      (function(idx){
+        var p=f.prompts[idx];
+        var prev=p.texto.substring(0,140).replace(/</g,'&lt;').replace(/\n/g,' ');
+        html+='<div class="p-card" style="border-color:'+f.color+'20" onclick="openPrompt('+idx+')">'
+          +'<style>.p-card:nth-child('+(idx+2)+')::before{background:'+f.color+'}</style>'
+          +'<div class="p-card-top"><div style="flex:1">'
+          +'<span class="p-badge" style="background:'+f.color+'15;color:'+f.color+'">'+p.etiqueta+'</span>'
+          +'<div class="p-card-title">'+p.titulo+'</div>'
+          +'</div><span class="p-card-arrow">&rarr;</span></div>'
+          +'<div class="p-preview">'+prev+'&hellip;</div></div>';
+      })(i);
+    }
+    if(fc<6){
+      html+='<div class="tip-banner">&#128161; <strong style="color:var(--gold)">Consejo:</strong> Completa todos los campos para obtener prompts con mayor nivel de detalle. '
+        +'<a onclick="irA(\'form\')">Completar datos &rarr;</a></div>';
+    }
+  } else {
+    var p=f.prompts[currentPrompt];
+    html+='<div class="prompt-view">'
+      +'<button class="pv-back" onclick="closePrompt()">&larr; '+f.fase+'</button>'
+      +'<div class="pv-box" style="border-color:'+f.color+'25;border-top:2px solid '+f.color+'">'
+      +'<div class="pv-header" style="border-bottom-color:'+f.color+'15">'
+      +'<span class="p-badge" style="background:'+f.color+'15;color:'+f.color+'">'+p.etiqueta+'</span>'
+      +'<div class="pv-title">'+p.titulo+'</div>'
+      +'<div class="pv-sub">Generado para: <span style="color:'+f.color+'80">'+(datos.titulo||'tu proyecto')+'</span></div>'
+      +'</div>'
+      +'<div class="pv-body">'
+      +'<div class="pv-text-wrap"><pre class="pv-text" id="ptext">'+escHtml(p.texto)+'</pre></div>'
+      +'<div class="pv-actions">'
+      +'<button class="btn-copy" id="btn-copy" style="background:'+f.color+';color:#fff" onclick="copyPrompt()">Copiar Prompt</button>'
+      +'<div class="pv-tip">Pega este prompt directamente en <strong style="color:var(--text)">Claude, ChatGPT o Gemini</strong> para obtener el analisis completo.</div>'
+      +'</div></div></div>'
+      +'<div class="pv-nav">';
+    if(currentPrompt>0)
+      html+='<button class="btn-pnav" onclick="navPrompt(-1)">&larr; Anterior</button>';
+    if(currentPrompt<f.prompts.length-1)
+      html+='<button class="btn-pnav" style="margin-left:auto" onclick="navPrompt(1)">Siguiente &rarr;</button>';
+    html+='</div></div>';
+  }
+  body.innerHTML=html;
+  // Inject export bar
+  var expBar=document.getElementById('exp-bar-main');
+  if(!expBar&&currentPrompt===null){
+    var eb=document.createElement('div');
+    eb.id='exp-bar-main';
+    eb.className='exp-bar';
+    eb.innerHTML='<span class="exp-label"><span class="save-dot"></span>'+(datos.titulo?'Guardado: <strong style="color:var(--text2)">'+datos.titulo+'</strong>':'Proyecto sin titulo')+'</span>'
+      +'<button class="btn-exp" onclick="exportData(\'txt\')" title="Exportar datos del formulario">&#128196;&nbsp;Datos .txt</button>'
+      +'<button class="btn-exp" onclick="exportData(\'json\')" title="Exportar como JSON">{ }&nbsp;JSON</button>'
+      +'<button class="btn-exp btn-exp-gold" onclick="exportData(\'prompts\')" title="Exportar todos los prompts generados">&#11015;&nbsp;Exportar Prompts</button>'
+      +'<button class="btn-exp" style="border-color:var(--red);color:var(--red)" onclick="clearProject()">&#128465;&nbsp;Limpiar</button>';
+    body.parentNode.insertBefore(eb,body.nextSibling);
+  } else if(expBar&&currentPrompt!==null){
+    expBar.remove();
+  }
+}
+
+function openPrompt(i) {currentPrompt=i;   renderPhase(generarPrompts());window.scrollTo(0,0);}
+function closePrompt() {currentPrompt=null; renderPhase(generarPrompts());window.scrollTo(0,0);}
+function navPrompt(d)  {currentPrompt+=d;   renderPhase(generarPrompts());window.scrollTo(0,0);}
+
+function copyPrompt(){
+  var el=document.getElementById('ptext');
+  var txt=el?el.textContent:'';
+  var f=generarPrompts()[currentPhase];
+  var col=f.color;
+  function setBtn(lbl,bg,c){
+    var b=document.getElementById('btn-copy');
+    if(!b)return;
+    b.textContent=lbl;b.style.background=bg;b.style.color=c;
+  }
+  function reset(){setBtn('Copiar Prompt',col,'#fff');}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){
+      setBtn('Copiado correctamente','#065F46','#6EE7B7');
+      setTimeout(reset,2500);
+    }).catch(fb);
+  } else {fb();}
+  function fb(){
+    var ta=document.createElement('textarea');
+    ta.value=txt;ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');setBtn('Copiado!','#065F46','#6EE7B7');setTimeout(reset,2500);}catch(e){}
+    document.body.removeChild(ta);
+  }
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+irA('inicio');
+</script>
+</body>
+</html>
